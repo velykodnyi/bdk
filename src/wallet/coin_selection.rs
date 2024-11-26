@@ -9,91 +9,6 @@
 // You may not use this file except in accordance with one or both of these
 // licenses.
 
-//! Coin selection
-//!
-//! This module provides the trait [`CoinSelectionAlgorithm`] that can be implemented to
-//! define custom coin selection algorithms.
-//!
-//! You can specify a custom coin selection algorithm through the [`coin_selection`] method on
-//! [`TxBuilder`]. [`DefaultCoinSelectionAlgorithm`] aliases the coin selection algorithm that will
-//! be used if it is not explicitly set.
-//!
-//! [`TxBuilder`]: super::tx_builder::TxBuilder
-//! [`coin_selection`]: super::tx_builder::TxBuilder::coin_selection
-//!
-//! ## Example
-//!
-//! ```
-//! # use std::str::FromStr;
-//! # use bitcoin::*;
-//! # use bdk::wallet::{self, coin_selection::*};
-//! # use bdk::database::Database;
-//! # use bdk::*;
-//! # use bdk::wallet::coin_selection::decide_change;
-//! # const TXIN_BASE_WEIGHT: usize = (32 + 4 + 4) * 4;
-//! #[derive(Debug)]
-//! struct AlwaysSpendEverything;
-//!
-//! impl<D: Database> CoinSelectionAlgorithm<D> for AlwaysSpendEverything {
-//!     fn coin_select(
-//!         &self,
-//!         database: &D,
-//!         required_utxos: Vec<WeightedUtxo>,
-//!         optional_utxos: Vec<WeightedUtxo>,
-//!         fee_rate: FeeRate,
-//!         target_amount: u64,
-//!         drain_script: &Script,
-//!     ) -> Result<CoinSelectionResult, bdk::Error> {
-//!         let mut selected_amount = 0;
-//!         let mut additional_weight = 0;
-//!         let all_utxos_selected = required_utxos
-//!             .into_iter()
-//!             .chain(optional_utxos)
-//!             .scan(
-//!                 (&mut selected_amount, &mut additional_weight),
-//!                 |(selected_amount, additional_weight), weighted_utxo| {
-//!                     **selected_amount += weighted_utxo.utxo.txout().value;
-//!                     **additional_weight += TXIN_BASE_WEIGHT + weighted_utxo.satisfaction_weight;
-//!                     Some(weighted_utxo.utxo)
-//!                 },
-//!             )
-//!             .collect::<Vec<_>>();
-//!         let additional_fees = fee_rate.fee_wu(additional_weight);
-//!         let amount_needed_with_fees = additional_fees + target_amount;
-//!         if selected_amount < amount_needed_with_fees {
-//!             return Err(bdk::Error::InsufficientFunds {
-//!                 needed: amount_needed_with_fees,
-//!                 available: selected_amount,
-//!             });
-//!         }
-//!
-//!         let remaining_amount = selected_amount - amount_needed_with_fees;
-//!
-//!         let excess = decide_change(remaining_amount, fee_rate, drain_script);
-//!
-//!         Ok(CoinSelectionResult {
-//!             selected: all_utxos_selected,
-//!             fee_amount: additional_fees,
-//!             excess,
-//!         })
-//!     }
-//! }
-//!
-//! # let wallet = doctest_wallet!();
-//! // create wallet, sync, ...
-//!
-//! let to_address = Address::from_str("2N4eQYCbKUHCCTUjBJeHcJp9ok6J2GZsTDt").unwrap();
-//! let (psbt, details) = {
-//!     let mut builder = wallet.build_tx().coin_selection(AlwaysSpendEverything);
-//!     builder.add_recipient(to_address.script_pubkey(), 50_000);
-//!     builder.finish()?
-//! };
-//!
-//! // inspect, sign, broadcast, ...
-//!
-//! # Ok::<(), bdk::Error>(())
-//! ```
-
 use crate::types::FeeRate;
 use crate::wallet::utils::IsDust;
 use crate::{database::Database, WeightedUtxo};
@@ -399,7 +314,7 @@ impl OutputGroup {
 /// Branch and bound coin selection
 ///
 /// Code adapted from Bitcoin Core's implementation and from Mark Erhardt Master's Thesis: <http://murch.one/wp-content/uploads/2016/11/erhardt2016coinselection.pdf>
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct BranchAndBoundCoinSelection {
     size_of_change: u64,
 }

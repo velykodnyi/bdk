@@ -18,7 +18,7 @@
     docsrs,
     doc(html_logo_url = "https://github.com/bitcoindevkit/bdk/raw/master/static/bdk.png")
 )]
-
+#![allow(rustdoc::broken_intra_doc_links)]
 //! A modern, lightweight, descriptor-based wallet library written in Rust.
 //!
 //! # About
@@ -197,14 +197,14 @@ fn main() -> Result<(), bdk::Error> {
 //! * `esplora`: [`esplora`](crate::blockchain::esplora) client protocol for interacting with blockstream [electrs](https://github.com/Blockstream/electrs) servers
 //! * `key-value-db`: key value [`database`](crate::database) based on [`sled`](crate::sled) for caching blockchain data
 
+#![allow(clippy::all)]
+
 pub extern crate bitcoin;
 extern crate log;
 pub extern crate miniscript;
 extern crate serde;
 #[macro_use]
 extern crate serde_json;
-#[cfg(feature = "hardware-signer")]
-pub extern crate hwi;
 
 #[cfg(all(feature = "reqwest", feature = "ureq"))]
 compile_error!("Features reqwest and ureq are mutually exclusive and cannot be enabled together");
@@ -247,14 +247,6 @@ pub extern crate sled;
 
 #[cfg(feature = "sqlite")]
 pub extern crate rusqlite;
-
-// We should consider putting this under a feature flag but we need the macro in doctests so we need
-// to wait until https://github.com/rust-lang/rust/issues/67295 is fixed.
-//
-// Stuff in here is too rough to document atm
-#[doc(hidden)]
-#[macro_use]
-pub mod testutils;
 
 #[cfg(test)]
 extern crate assert_matches;
